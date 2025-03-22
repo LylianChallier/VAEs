@@ -3,7 +3,7 @@
 Contains functions to:
 - plot the losses (train and test)
 - visualize input images vs reconstructed images
-- visualize images generated from a gaussian random sample 
+- visualize images generated from a gaussian random sample
 - create the vae arcitecture diagram
 """
 
