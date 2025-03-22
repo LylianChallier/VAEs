@@ -1,7 +1,7 @@
 """The visualization functions.
 
 Contains functions to:
-- plot the losses (train and test)
+- interactive plot for the losses (train and test)
 - visualize input images vs reconstructed images
 - visualize images generated from a gaussian random sample
 - create the vae arcitecture diagram
@@ -16,9 +16,56 @@ from typing import Union
 import graphviz
 
 
-def plot_loss_curves(train_losses, test_losses, placeholder=None, fig=None):
+def plot_loss_pretrained(train_losses, test_losses, placeholder=None, fig=None):
     """
-    Plot the training and test loss curves.
+    Plot the training and test loss for a pretrained model.
+
+    Parameters
+    ----------
+    train_losses : list
+        List of training losses
+    test_losses : list
+        List of test losses
+    placeholder : st.empty, optional
+        Streamlit placeholder to update with the plot
+    fig : matplotlib.figure.Figure, optional
+        Figure to use for plotting
+    """
+    epochs = list(range(1, len(train_losses) + 1))
+
+    # Create figure if not provided
+    if fig is None:
+        fig, ax = plt.subplots(figsize=(10, 6))
+    else:
+        fig.clf()
+        ax = fig.add_subplot(111)
+
+    # Plot losses with both lines and points
+
+    ax.plot(epochs, train_losses, "b-", label="Training Loss")
+    ax.scatter(epochs, train_losses, color="blue")
+    ax.plot(epochs, test_losses, "r-", label="Testing Loss")
+    ax.scatter(epochs, test_losses, color="red")
+
+    # Add labels and title
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Loss")
+    ax.set_title("Training and Testing Loss vs. Epochs")
+
+    # Add grid and legend
+    ax.grid(True, linestyle="--", alpha=0.7)
+    ax.legend()
+
+    if placeholder is not None:
+        # Update the placeholder
+        placeholder.pyplot(fig)
+
+    return fig
+
+
+def plot_loss_interactive(train_losses, test_losses, placeholder=None, fig=None):
+    """
+    Plot the training and test loss during the training.
 
     Parameters
     ----------
@@ -289,13 +336,13 @@ def create_vae_diagram(input_dim, latent_dim, hidden_dims):
     graph.edge("Flatten", "FC_var")
 
     # Reparameterization
-    graph.node("Z", f"Espace latent\n{latent_dim}\nz = μ + σ·ε")
+    graph.node("Z", f"Espace Latent\n{latent_dim}\nz = μ + σ·ε")
     graph.edge("FC_mu", "Z", label="reparametrisation avec μ et σ")
     # graph.edge("FC_mu", "Z", label="μ")
     graph.edge("FC_var", "Z")
 
     # Decoder - FC and reshape
-    graph.node("Dec_FC", f"FC sortie latente\n{latent_dim} → {flat_size}")
+    graph.node("Dec_FC", f"FC Sortie Latente\n{latent_dim} → {flat_size}")
     graph.edge("Z", "Dec_FC")
 
     graph.node(
@@ -332,7 +379,7 @@ def create_vae_diagram(input_dim, latent_dim, hidden_dims):
 
         # Output
         graph.node(
-            "Output", f"Image sortie\n{input_channels}×{input_height}×{input_width}"
+            "Output", f"Image Sortie\n{input_channels}×{input_height}×{input_width}"
         )
         graph.edge("Dec_final", "Output")
     else:
@@ -348,7 +395,7 @@ def create_vae_diagram(input_dim, latent_dim, hidden_dims):
             node_name = f"Dec{i}"
             graph.node(
                 node_name,
-                f"ConvTranspose2D\n{in_channels} → {out_channels}\n{current_height}×{current_width} → {next_height}×{next_width}",
+                f"Conv 2D Transposée\n{in_channels} → {out_channels}\n{current_height}×{current_width} → {next_height}×{next_width}",
             )
 
             if i == 0:
@@ -366,7 +413,7 @@ def create_vae_diagram(input_dim, latent_dim, hidden_dims):
 
         graph.node(
             "Dec_final1",
-            f"ConvTranspose2D\n{current_channels} → {current_channels}\n{current_height}×{current_width} → {next_height}×{next_width}",
+            f"Conv 2D Transposée\n{current_channels} → {current_channels}\n{current_height}×{current_width} → {next_height}×{next_width}",
         )
         graph.edge(f"Dec{len(hidden_dims_reversed)-2}", "Dec_final1")
 
@@ -376,13 +423,13 @@ def create_vae_diagram(input_dim, latent_dim, hidden_dims):
         # Final convolutional layer
         graph.node(
             "Dec_final2",
-            f"Conv2D\n{current_channels} → {input_channels}\n{current_height}×{current_width} → {current_height}×{current_width}",
+            f"Convolution 2D\n{current_channels} → {input_channels}\n{current_height}×{current_width} → {current_height}×{current_width}",
         )
         graph.edge("Dec_final1", "Dec_final2")
 
         # Output
         graph.node(
-            "Output", f"Output Image\n{input_channels}×{input_height}×{input_width}"
+            "Output", f"Image Sortie\n{input_channels}×{input_height}×{input_width}"
         )
         graph.edge("Dec_final2", "Output")
 

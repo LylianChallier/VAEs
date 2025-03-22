@@ -60,8 +60,11 @@ def get_dataset(
         transform = transforms.Compose(
             [transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))]
         )
-        dataset = datasets.MNIST(
+        train_dataset = datasets.MNIST(
             root="./data", train=True, transform=transform, download=True
+        )
+        test_dataset = datasets.MNIST(
+            root="./data", train=False, transform=transform, download=True
         )
         input_channels, input_height, input_width = 1, 28, 28
 
@@ -72,25 +75,16 @@ def get_dataset(
                 transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
             ]
         )
-        dataset = datasets.CIFAR10(
+        train_dataset = datasets.CIFAR10(
             root="./data", train=True, transform=transform, download=True
+        )
+        test_dataset = datasets.CIFAR10(
+            root="./data", train=False, transform=transform, download=True
         )
         input_channels, input_height, input_width = 3, 32, 32
 
-    elif dataset_name.lower() == "freyfaces":
-        # FreyFaces dataset is not available in torchvision, so we need to load it manually
-        # This is a placeholder - you might need to adjust based on how the dataset is stored
-        # The expected shape is (1, 28, 20)
-        raise NotImplementedError(
-            "FreyFaces dataset loading not implemented in this example"
-        )
     else:
-        raise ValueError(f"Unknown dataset: {dataset_name}")
-
-    # Split into train and test sets
-    train_size = int((1 - test_split) * len(dataset))
-    test_size = len(dataset) - train_size
-    train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
+        raise ValueError("Unknow dataset, please select MNIST or Cifar10")
 
     # Create data loaders
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)

@@ -1,16 +1,19 @@
-"""The classic gaussian VAE module.
+"""The Sigma VAE module.
 
-Contains the class for the architecture of a classic gaussian VAE.
+Contains the class for the architecture of a Sigma VAE.
 With encoder, decoder, reparametrization and loss function.
+
 """
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 from typing import Tuple, Dict, List
+import math
 
 
-class VAE(nn.Module):
+class SigmaVAE(nn.Module):
     """
     Variational Autoencoder implementation based on Kingma and Welling's paper.
 
@@ -35,25 +38,27 @@ class VAE(nn.Module):
     hidden_dims : List[int]
         List of hidden dimensions for the encoder and decoder
     recon_loss_type : str
-        Type of reconstruction loss ('MSE' or 'L1')
+        Type of reconstruction loss ('gaussian' or 'laplace' log-likelyhood)
     """
 
     def __init__(
         self,
-        input_channels: int,
-        input_height: int,
-        input_width: int,
-        latent_dim: int = 40,
+        input_channels: int = 1,
+        input_height: int = 28,
+        input_width: int = 28,
+        latent_dim: int = 10,
         hidden_dims: List[int] = None,
-        recon_loss_type: str = "mse",
+        recon_loss_type: str = "gaussian",
+        beta: float = 1,
     ):
-        super(VAE, self).__init__()
+        super(SigmaVAE, self).__init__()
 
         self.input_channels = input_channels
         self.input_height = input_height
         self.input_width = input_width
         self.latent_dim = latent_dim
         self.recon_loss_type = recon_loss_type.lower()
+        self.beta = beta
 
         # Set default hidden dimensions if not provided
         if hidden_dims is None:
@@ -82,18 +87,14 @@ class VAE(nn.Module):
 
         self.encoder_conv = nn.Sequential(*modules)
 
-        # Calculate size after convolutions and store the shape for later use
+        # Calculate size after convolutions and store the shape
         with torch.no_grad():
-            # Create a dummy input tensor to get the output shape of the encoder
             dummy_input = torch.zeros(
                 1, self.input_channels, self.input_height, self.input_width
             )
-            # Pass through the convolutions
-            self.conv_output = self.encoder_conv(dummy_input)
-            # Store the shape for later use in decode()
-            self.conv_output_shape = self.conv_output.shape
-            # Get the flattened size
-            self.flat_size = self.conv_output.numel()
+            conv_output = self.encoder_conv(dummy_input)
+            self.conv_shape = conv_output.shape
+            self.flat_size = np.prod(self.conv_shape[1:])
 
         # MLP Gaussian encoder
         self.fc_mu = nn.Linear(self.flat_size, latent_dim)
@@ -106,21 +107,20 @@ class VAE(nn.Module):
         modules = []
 
         # Reverse the hidden dimensions for the decoder
-        self.decoder_hidden_dims = hidden_dims.copy()
-        self.decoder_hidden_dims.reverse()
+        hidden_dims.reverse()
 
-        for i in range(len(self.decoder_hidden_dims) - 1):
+        for i in range(len(hidden_dims) - 1):
             modules.append(
                 nn.Sequential(
                     nn.ConvTranspose2d(
-                        self.decoder_hidden_dims[i],
-                        self.decoder_hidden_dims[i + 1],
+                        hidden_dims[i],
+                        hidden_dims[i + 1],
                         kernel_size=3,
                         stride=2,
                         padding=1,
                         output_padding=1,
                     ),
-                    nn.BatchNorm2d(self.decoder_hidden_dims[i + 1]),
+                    nn.BatchNorm2d(hidden_dims[i + 1]),
                     nn.LeakyReLU(),
                 )
             )
@@ -131,23 +131,23 @@ class VAE(nn.Module):
         # Final transposed convolution to get back to original channels
         self.final_layer = nn.Sequential(
             nn.ConvTranspose2d(
-                self.decoder_hidden_dims[-1],
-                self.decoder_hidden_dims[-1],
+                hidden_dims[-1],
+                hidden_dims[-1],
                 kernel_size=3,
                 stride=2,
                 padding=1,
                 output_padding=1,
             ),
-            nn.BatchNorm2d(self.decoder_hidden_dims[-1]),
+            nn.BatchNorm2d(hidden_dims[-1]),
             nn.LeakyReLU(),
             nn.Conv2d(
-                self.decoder_hidden_dims[-1],
-                out_channels=input_channels,
-                kernel_size=3,
-                padding=1,
+                hidden_dims[-1], out_channels=input_channels, kernel_size=3, padding=1
             ),
             nn.Tanh(),
         )
+
+        # Reset hidden_dims to original order
+        hidden_dims.reverse()
 
     def encode(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
@@ -213,13 +213,12 @@ class VAE(nn.Module):
         # Project and reshape
         h = self.decoder_input(z)
 
-        # Reshape to match the stored shape from the encoder
+        # Calculate the number of channels and spatial dimensions
         batch_size = z.size(0)
+
+        # Reshape to match the expected input for transposed convolutions
         h = h.view(
-            batch_size,
-            self.conv_output_shape[1],
-            self.conv_output_shape[2],
-            self.conv_output_shape[3],
+            batch_size, self.conv_shape[1], self.conv_shape[2], self.conv_shape[3]
         )
 
         # Apply transposed convolutions
@@ -254,13 +253,12 @@ class VAE(nn.Module):
         x: torch.Tensor,
         mu: torch.Tensor,
         log_var: torch.Tensor,
-        kl_weight: float = 1.0,
     ) -> Dict[str, torch.Tensor]:
         """
         Calculate the VAE loss function.
 
         The loss consists of:
-        - Reconstruction loss (either L2 (MSE) or L1 error)
+        - Reconstruction loss (either Gaussian or Laplace log-likelihood)
         - KL divergence between the encoded distribution and the prior
 
         Parameters
@@ -273,8 +271,6 @@ class VAE(nn.Module):
             Mean of the latent Gaussian
         log_var : torch.Tensor
             Log variance of the latent Gaussian
-        kl_weight : float, optional
-            Weight for the KL divergence term, by default 1.0
 
         Returns
         -------
@@ -284,24 +280,38 @@ class VAE(nn.Module):
         batch_size = x.size(0)
 
         # Calculate reconstruction loss based on the specified type
-        if self.recon_loss_type == "mse":
-            # L2 loss == MSE
-            recon_loss = F.mse_loss(recon_x, x, reduction="sum") / batch_size
-        elif self.recon_loss_type == "l1":
-            # L1 loss
-            recon_loss = F.l1_loss(recon_x, x, reduction="sum") / batch_size
+        if self.recon_loss_type == "gaussian":
+            # Gaussian log-likelihood
+            # Calculate the scale (variance) based on MSE
+            scale = torch.mean((x - recon_x) ** 2)
+            # Log-likelihood formula
+            recon_loss = -0.5 * torch.sum(
+                ((x - recon_x) ** 2) / scale + torch.log(scale) + math.log(2 * math.pi)
+            )
+        elif self.recon_loss_type == "laplace":
+            # Laplace log-likelihood
+            # Calculate scale based on absolute error
+            scale = torch.mean(torch.abs(x - recon_x))
+            # Log-likelihood formula
+            recon_loss = -torch.sum(
+                torch.abs(x - recon_x) / scale + torch.log(2 * scale)
+            )
         else:
             raise ValueError(
-                f"Unknown reconstruction loss type: {self.recon_loss_type}, please use MSE or L1"
+                f"Unknown reconstruction loss type: {self.recon_loss_type}"
             )
 
         # KL divergence
-        kl_loss = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp()) / batch_size
+        kl_loss = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
 
-        # Total loss
-        total_loss = recon_loss + kl_weight * kl_loss
+        # Total loss: negative ELBO (Evidence Lower BOund)
+        total_loss = (-recon_loss + self.beta * kl_loss) / batch_size
 
-        return {"loss": total_loss, "recon_loss": recon_loss, "kl_loss": kl_loss}
+        return {
+            "loss": total_loss,
+            "recon_loss": -recon_loss / batch_size,
+            "kl_loss": kl_loss / batch_size,
+        }
 
     def sample(self, num_samples: int, device: torch.device = None) -> torch.Tensor:
         """

@@ -10,12 +10,9 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from typing import Tuple, Dict, List
 import time
-import matplotlib.pyplot as plt
-import torch
-import torch.nn as nn
 
 # Import des modules personnalisés
-from viz import plot_loss_curves, visualize_reconstructions
+from viz import plot_loss_interactive, visualize_reconstructions
 
 
 def train_model(
@@ -152,7 +149,7 @@ def train_model(
 
         # Update loss curves plot if placeholder is available
         if loss_placeholder is not None:
-            plot_loss_curves(train_losses, test_losses, loss_placeholder, loss_fig)
+            plot_loss_interactive(train_losses, test_losses, loss_placeholder, loss_fig)
 
         # Update reconstructions plot if placeholder is available
         if images_placeholder is not None and (
@@ -169,7 +166,7 @@ def train_model(
     if progress_bar is not None:
         progress_bar.progress(1.0)
     if status_text is not None:
-        status_text.text(f"Training completed after {num_epochs} epochs!")
+        status_text.text(f"Entaînement terminé après {num_epochs} epochs!")
 
     # Return the trained model and the losses
     return model, {"train_losses": train_losses, "test_losses": test_losses}
