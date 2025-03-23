@@ -1,8 +1,9 @@
-"""The Sigma VAE module.
+"""Sigma VAE module.
 
-Contains the class for the architecture of a Sigma VAE.
-With encoder, decoder, reparametrization and loss function.
-
+This module contains the implementation of a Sigma VAE architecture.
+Includes encoder, decoder, reparameterization and loss function components.
+Sigma VAE learns the variance of the reconstruction distribution, providing
+more robust and adaptive reconstruction capability.
 """
 
 import torch
@@ -14,31 +15,35 @@ import math
 
 
 class SigmaVAE(nn.Module):
-    """
-    Variational Autoencoder implementation based on Kingma and Welling's paper.
+    """Sigma Variational Autoencoder implementation.
 
-    This VAE implementation includes:
-    - Convolutional layers before the encoder
-    - Transposed convolutional layers after the decoder
-    - Gaussian MLP encoder
-    - Gaussian MLP decoder
-    - Reparameterization method
-    - Loss function with KL divergence and reconstruction error
+    This implementation is based on Kingma and Welling's VAE framework, with
+    the sigma modification from Rybkin et al., to learn the variance of the reconstruction distribution.
+
+    The architecture includes:
+    - Convolutional layers for the encoder
+    - Transposed convolutional layers for the decoder
+    - Gaussian MLP encoder and decoder
+    - Reparameterization trick
+    - Adaptive loss function with learnable scale parameter
 
     Parameters
     ----------
-    input_channels : int
+    input_channels : int, default=1
         Number of input channels (1 for grayscale, 3 for RGB)
-    input_height : int
+    input_height : int, default=28
         Height of the input images
-    input_width : int
+    input_width : int, default=28
         Width of the input images
-    latent_dim : int
+    latent_dim : int, default=10
         Dimension of the latent space
-    hidden_dims : List[int]
-        List of hidden dimensions for the encoder and decoder
-    recon_loss_type : str
-        Type of reconstruction loss ('gaussian' or 'laplace' log-likelyhood)
+    hidden_dims : List[int], optional
+        List of hidden dimensions for the encoder and decoder networks.
+        If None, defaults to [32, 64, 128, 256]
+    recon_loss_type : str, default="gaussian"
+        Type of reconstruction loss ('gaussian' or 'laplace' log-likelihood)
+    beta : float, default=1
+        Coefficient for the KL divergence in the loss function
     """
 
     def __init__(
@@ -60,12 +65,12 @@ class SigmaVAE(nn.Module):
         self.recon_loss_type = recon_loss_type.lower()
         self.beta = beta
 
-        # Set default hidden dimensions if not provided
+        # Default architecture if not specified
         if hidden_dims is None:
             hidden_dims = [32, 64, 128, 256]
         self.hidden_dims = hidden_dims
 
-        # Build encoder convolutional layers
+        # Encoder convolutional network
         modules = []
         in_channels = input_channels
 
@@ -87,7 +92,7 @@ class SigmaVAE(nn.Module):
 
         self.encoder_conv = nn.Sequential(*modules)
 
-        # Calculate size after convolutions and store the shape
+        # Calculate flattened size after convolutions
         with torch.no_grad():
             dummy_input = torch.zeros(
                 1, self.input_channels, self.input_height, self.input_width
@@ -96,17 +101,17 @@ class SigmaVAE(nn.Module):
             self.conv_shape = conv_output.shape
             self.flat_size = np.prod(self.conv_shape[1:])
 
-        # MLP Gaussian encoder
+        # Latent space projection
         self.fc_mu = nn.Linear(self.flat_size, latent_dim)
         self.fc_var = nn.Linear(self.flat_size, latent_dim)
 
-        # MLP Gaussian decoder - first part
+        # Decoder initial projection
         self.decoder_input = nn.Linear(latent_dim, self.flat_size)
 
-        # Build decoder transposed convolutional layers
+        # Decoder transposed convolutional network
         modules = []
 
-        # Reverse the hidden dimensions for the decoder
+        # Reverse hidden dimensions for decoder architecture
         hidden_dims.reverse()
 
         for i in range(len(hidden_dims) - 1):
@@ -125,10 +130,9 @@ class SigmaVAE(nn.Module):
                 )
             )
 
-        # Final layer to output the reconstructed image
         self.decoder_conv = nn.Sequential(*modules)
 
-        # Final transposed convolution to get back to original channels
+        # Final layer to reconstruct the original image dimensions
         self.final_layer = nn.Sequential(
             nn.ConvTranspose2d(
                 hidden_dims[-1],
@@ -146,12 +150,11 @@ class SigmaVAE(nn.Module):
             nn.Tanh(),
         )
 
-        # Reset hidden_dims to original order
+        # Restore hidden_dims order
         hidden_dims.reverse()
 
     def encode(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Encode the input into the latent space.
+        """Encode the input into latent space parameters.
 
         Parameters
         ----------
@@ -160,24 +163,28 @@ class SigmaVAE(nn.Module):
 
         Returns
         -------
-        tuple
-            A tuple containing the mean and log variance of the latent space
+        mu : torch.Tensor
+            Mean of the latent Gaussian distribution
+        log_var : torch.Tensor
+            Log variance of the latent Gaussian distribution
         """
-        # Pass through conv layers
+        # Extract features with convolutional network
         x = self.encoder_conv(x)
 
-        # Flatten
+        # Flatten for fully connected layers
         x = x.view(x.size(0), -1)
 
-        # Get mean and log variance
+        # Project to latent parameters
         mu = self.fc_mu(x)
         log_var = self.fc_var(x)
 
         return mu, log_var
 
     def reparameterize(self, mu: torch.Tensor, log_var: torch.Tensor) -> torch.Tensor:
-        """
-        Reparameterization trick to sample from N(mu, var) using N(0,1).
+        """Apply the reparameterization trick.
+
+        Sample from N(mu, var) using N(0,1) to enable backpropagation
+        through the sampling process.
 
         Parameters
         ----------
@@ -188,7 +195,7 @@ class SigmaVAE(nn.Module):
 
         Returns
         -------
-        torch.Tensor
+        z : torch.Tensor
             Sampled latent vector
         """
         std = torch.exp(0.5 * log_var)
@@ -197,26 +204,23 @@ class SigmaVAE(nn.Module):
         return z
 
     def decode(self, z: torch.Tensor) -> torch.Tensor:
-        """
-        Decode latent samples into reconstructed images.
+        """Decode latent vectors into reconstructed images.
 
         Parameters
         ----------
         z : torch.Tensor
-            Latent samples
+            Latent vectors of shape [batch_size, latent_dim]
 
         Returns
         -------
-        torch.Tensor
+        reconstruction : torch.Tensor
             Reconstructed images
         """
-        # Project and reshape
+        # Project latent vector to decoder input size
         h = self.decoder_input(z)
-
-        # Calculate the number of channels and spatial dimensions
         batch_size = z.size(0)
 
-        # Reshape to match the expected input for transposed convolutions
+        # Reshape to match the expected spatial dimensions
         h = h.view(
             batch_size, self.conv_shape[1], self.conv_shape[2], self.conv_shape[3]
         )
@@ -224,14 +228,13 @@ class SigmaVAE(nn.Module):
         # Apply transposed convolutions
         h = self.decoder_conv(h)
 
-        # Final layer to get reconstructed image
+        # Generate final reconstruction
         return self.final_layer(h)
 
     def forward(
         self, x: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """
-        Forward pass through the VAE.
+        """Forward pass through the VAE.
 
         Parameters
         ----------
@@ -240,8 +243,12 @@ class SigmaVAE(nn.Module):
 
         Returns
         -------
-        tuple
-            A tuple containing the reconstructed image, mean, and log variance
+        reconstruction : torch.Tensor
+            Reconstructed input tensor
+        mu : torch.Tensor
+            Mean of the latent Gaussian
+        log_var : torch.Tensor
+            Log variance of the latent Gaussian
         """
         mu, log_var = self.encode(x)
         z = self.reparameterize(mu, log_var)
@@ -254,12 +261,12 @@ class SigmaVAE(nn.Module):
         mu: torch.Tensor,
         log_var: torch.Tensor,
     ) -> Dict[str, torch.Tensor]:
-        """
-        Calculate the VAE loss function.
+        """Calculate the Sigma VAE loss function.
 
-        The loss consists of:
-        - Reconstruction loss (either Gaussian or Laplace log-likelihood)
-        - KL divergence between the encoded distribution and the prior
+        Computes the combined loss consisting of:
+        - Reconstruction loss (Gaussian or Laplace log-likelihood with learned scale)
+        - KL divergence between the encoded distribution and standard normal prior,
+          weighted by beta
 
         Parameters
         ----------
@@ -274,14 +281,22 @@ class SigmaVAE(nn.Module):
 
         Returns
         -------
-        dict
-            A dictionary containing the total loss and its components
+        losses : Dict[str, torch.Tensor]
+            Dictionary containing the total loss and individual components:
+            - 'loss': Combined weighted loss
+            - 'recon_loss': Reconstruction loss component
+            - 'kl_loss': KL divergence component
+
+        Raises
+        ------
+        ValueError
+            If unknown reconstruction loss type is specified
         """
         batch_size = x.size(0)
 
         # Calculate reconstruction loss based on the specified type
         if self.recon_loss_type == "gaussian":
-            # Gaussian log-likelihood
+            # Gaussian log-likelihood with learned scale
             # Calculate the scale (variance) based on MSE
             scale = torch.mean((x - recon_x) ** 2)
             # Log-likelihood formula
@@ -289,7 +304,7 @@ class SigmaVAE(nn.Module):
                 ((x - recon_x) ** 2) / scale + torch.log(scale) + math.log(2 * math.pi)
             )
         elif self.recon_loss_type == "laplace":
-            # Laplace log-likelihood
+            # Laplace log-likelihood with learned scale
             # Calculate scale based on absolute error
             scale = torch.mean(torch.abs(x - recon_x))
             # Log-likelihood formula
@@ -298,10 +313,11 @@ class SigmaVAE(nn.Module):
             )
         else:
             raise ValueError(
-                f"Unknown reconstruction loss type: {self.recon_loss_type}"
+                f"Unknown reconstruction loss type: {self.recon_loss_type}, "
+                "please use 'gaussian' or 'laplace'"
             )
 
-        # KL divergence
+        # KL divergence with standard normal prior
         kl_loss = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
 
         # Total loss: negative ELBO (Evidence Lower BOund)
@@ -314,29 +330,28 @@ class SigmaVAE(nn.Module):
         }
 
     def sample(self, num_samples: int, device: torch.device = None) -> torch.Tensor:
-        """
-        Sample from the latent space and generate new images.
+        """Generate new samples by sampling from the latent space.
 
         Parameters
         ----------
         num_samples : int
             Number of samples to generate
         device : torch.device, optional
-            Device to run the sampling on. If None, uses the device of the model.
+            Device to run the sampling on. If None, uses the model's device.
 
         Returns
         -------
-        torch.Tensor
-            Generated samples
+        samples : torch.Tensor
+            Generated image samples
         """
-        # If device is not specified, use the device of the model
+        # Use model's device if none specified
         if device is None:
             device = next(self.parameters()).device
 
-        # Sample from the latent space
+        # Sample from standard normal distribution
         z = torch.randn(num_samples, self.latent_dim, device=device)
 
-        # Decode the samples
+        # Generate images from latent samples
         samples = self.decode(z)
 
         return samples
