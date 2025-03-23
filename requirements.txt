@@ -4,7 +4,6 @@ asttokens==3.0.0
 attrs==25.1.0
 babel==2.17.0
 blinker==1.9.0
-boost-cpp==1.82.0
 bzip2==1.0.8
 ca-certificates==2025.2.25
 cachetools==5.5.1
@@ -57,7 +56,7 @@ ipython==8.34.0
 jedi==0.19.2
 jinja2==3.1.5
 joblib==1.4.2
-jpeg==9e
+jpeg==9.0
 jsonschema==4.23.0
 jsonschema-specifications==2024.10.1
 jupyter_client==8.6.3
