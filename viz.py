@@ -79,7 +79,7 @@ def visualize_reconstructions(
     placeholder=None,
     epoch: Optional[int] = None,
     fig=None,
-    num_images: int = 4,
+    num_images: int = 7,
 ):
     """
     Visualize original images and their reconstructions.
@@ -97,7 +97,7 @@ def visualize_reconstructions(
     fig : matplotlib.figure.Figure, optional
         Figure to use for plotting.
     num_images : int, optional
-        Number of images to visualize, by default 4.
+        Number of images to visualize, by default 7.
 
     Returns
     -------

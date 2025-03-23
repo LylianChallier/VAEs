@@ -69,7 +69,7 @@ def train_model(
     test_losses = []
 
     # Get a batch of test images for visualization
-    test_batch = next(iter(test_loader))[0][:4].to(device)
+    test_batch = next(iter(test_loader))[0][:10].to(device)
 
     # Figure for loss curves
     loss_fig = plt.figure(figsize=(10, 6))
@@ -156,7 +156,7 @@ def train_model(
             epoch % 2 == 0 or epoch == num_epochs - 1
         ):
             visualize_reconstructions(
-                model, test_batch, images_placeholder, epoch, recon_fig
+                model, test_batch, images_placeholder, epoch, recon_fig, num_images=7
             )
 
         # Brief pause to allow UI to update

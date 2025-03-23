@@ -298,6 +298,10 @@ class BetaVAE(nn.Module):
             recon_loss = F.mse_loss(recon_x, x, reduction="sum")
         elif self.recon_loss_type == "l1":
             recon_loss = F.l1_loss(recon_x, x, reduction="sum")
+        elif (
+            self.recon_loss_type == "bce"
+        ):  # Add this functionnality, with 0-1 normalized data
+            recon_loss = F.binary_cross_entropy(recon_x, x, reduction="sum")
         else:
             raise ValueError(
                 f"Unknown reconstruction loss type: {self.recon_loss_type}, please use MSE or L1"

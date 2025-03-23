@@ -6,6 +6,7 @@ that trains the model, plots losses and displays reconstructed images.
 
 import streamlit as st
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import os
 
@@ -21,7 +22,7 @@ from viz import (
     plot_loss,
 )
 
-# Configuration de la page
+# Page configuration
 st.set_page_config(
     page_title="Variational Autoencoder Explorer", page_icon="🖼", layout="wide"
 )
@@ -30,7 +31,7 @@ st.set_page_config(
 if not os.path.exists("models"):
     os.makedirs("models")
 
-# Structure principale de l'application avec deux colonnes
+# Main application structure with two columns
 col1, col2 = st.columns([3, 1])
 
 
@@ -49,7 +50,7 @@ def modelisation(
     Parameters
     ----------
     model_name : str
-        Type of VAE model to use ("VAE classique", "β-VAE" or "σ-VAE")
+        Type of VAE model to use ("VAE original", "β-VAE" or "σ-VAE")
     dataset : str
         Dataset to use for training and testing
     latent_dim : int
@@ -87,9 +88,9 @@ def modelisation(
     model_path = f"models/vae_{model_id}.pth"
     losses_path = f"models/vae_{model_id}_losses.pth"
 
-    # Create VAE model
+    # Create appropriate VAE model based on user selection
     c, w, h = dim
-    if model_name == "VAE classique":
+    if model_name == "VAE original":
         model = BetaVAE(
             c,
             w,
@@ -136,7 +137,7 @@ def modelisation(
         plt.close(loss_fig)
 
         recon_fig = plt.figure(figsize=(10, 4))
-        visualize_reconstructions(model, test_loader, fig=recon_fig)
+        visualize_reconstructions(model, test_loader, fig=recon_fig, num_images=7)
         st.pyplot(recon_fig)
         plt.close(recon_fig)
 
@@ -146,7 +147,7 @@ def modelisation(
         # Display generated images
         st.subheader("Images générées")
         fig_gen = plt.figure(figsize=(10, 10))
-        generate_samples(model, num_samples=16, fig=fig_gen)
+        generate_samples(model, num_samples=49, fig=fig_gen)
         st.pyplot(fig_gen)
         plt.close(fig_gen)
     else:
@@ -183,49 +184,52 @@ def modelisation(
         # Display generated images after training
         st.subheader("Images générées")
         fig_gen = plt.figure(figsize=(10, 10))
-        generate_samples(model, num_samples=16, fig=fig_gen)
+        generate_samples(model, num_samples=49, fig=fig_gen)
         st.pyplot(fig_gen)
         plt.close(fig_gen)
 
     return model
 
 
-# Sidebar pour les hyperparamètres
+# Sidebar for hyperparameters
 st.sidebar.title("Paramètres du VAE")
 
-# Sélection du model
-model_name = st.sidebar.selectbox("Type de VAE", ["VAE classique", "β-VAE", "σ-VAE"])
+# Model selection
+model_name = st.sidebar.selectbox("Type de VAE", ["VAE original", "β-VAE", "σ-VAE"])
 
-# Sélection du dataset
+# Dataset selection
 dataset = st.sidebar.selectbox("Dataset", ["MNIST", "CIFAR10"])
 
-# Dimension de l'espace latent
+# Latent space dimension
 latent_dim = st.sidebar.slider(
-    "Dimension de l'espace latent", min_value=2, max_value=200, value=40, step=1
+    "Dimension de l'espace latent", min_value=2, max_value=400, value=128, step=2
 )
 
-# Couches convolutionnelles cachées
+# Hidden convolutional layers
 hidden_layers = st.sidebar.multiselect(
     "Couches convolutionnelles cachées",
     options=[8, 16, 32, 64, 128, 256, 512],
     default=[32, 64],
 )
+# Sort layers and ensure they are integers
+hidden_layers = sorted(hidden_layers)
+hidden_layers = [int(item) for item in hidden_layers]
 
 # Check if the number of selections exceeds the maximum allowed
 if len(hidden_layers) > 5:
     st.sidebar.error(
         "Vous ne pouvez sélectionner qu'un maximum de 5 couches de convolution."
     )
-    # Reset selection if necessary
+    # Limit selection to the first 5 layers
     hidden_layers = hidden_layers[:5]
 
 # Check if the number of selections is at least 1
 if len(hidden_layers) == 0:
     st.sidebar.error("Vous devez choisir au moins une couche de convolution.")
-    # Reset selection if necessary
+    # Set default layer if none selected
     hidden_layers = [32]
 
-# Type d'erreur de reconstruction
+# Reconstruction error type
 if model_name == "σ-VAE":
     reconstruction_error = st.sidebar.selectbox(
         "Erreur de reconstruction (log-vraissemblance)", ["gaussian", "laplace"]
@@ -235,6 +239,7 @@ else:
         "Erreur de reconstruction", ["MSE", "L1"]
     )
 
+# Beta parameter for β-VAE and σ-VAE
 if model_name != "VAE classique":
     beta = st.sidebar.slider(
         "Coefficient de la KL divergence β",
@@ -246,14 +251,15 @@ if model_name != "VAE classique":
 else:
     beta = 1
 
-# Taille du batch
+# Batch size selection
 batch_size = st.sidebar.selectbox("Taille du batch", options=[64, 128, 256], index=0)
 
-# Nombre d'epochs
+# Number of training epochs
 epochs = st.sidebar.slider(
     "Nombre d'epochs", min_value=1, max_value=50, value=5, step=1
 )
 
+# Dataset information
 if dataset.lower() == "mnist":
     st.sidebar.info(
         """
@@ -270,60 +276,147 @@ if dataset.lower() == "cifar10":
     """
     )
 
-# Colonne 1: Contenu principal
+# Column 1: Main content
 with col1:
-    st.title("Explorateur de Variational Autoencoder (VAE)")
-    st.write(
+    st.title("Explorez les Variational Autoencoders (VAEs)")
+
+    st.markdown(
         """
-    Cette application permet d'explorer les Variational Autoencoders (VAEs), un type de modèle génératif
-    qui apprend à reconstruire et générer des images à partir d'un espace latent continu.
-    Ajustez les paramètres dans la barre latérale et lancez l'entrainement pour observer les résultats.
-    """
+    <style>
+    .justified {
+        text-align: justify;
+    }
+    </style>
+    <div class="justified">
+        Bienvenue dans notre application Streamlit dédiée aux Variational Autoencoders (VAEs) !
+        Découvrez comment ces modèles génèrent de nouvelles données en ajustant les paramètres de trois types de VAEs :
+        <strong>l'original, le β-VAE et le σ-VAE</strong>. Plongez dans l'univers fascinant de l'apprentissage génératif et expérimentez par vous-même les différences entre ces modèles.
+        Prêt à jouer avec les VAEs ? C'est parti !
+    </div>
+    <br>
+    """,
+        unsafe_allow_html=True,
     )
 
-    # Section "En savoir plus sur les VAE"
-    with st.expander("En savoir plus sur les VAE"):
+    st.subheader("Qu'est-ce qu'un VAE ?")
+
+    st.markdown(
+        """
+    <style>
+    .justified {
+        text-align: justify;
+    }
+    </style>
+    <div class="justified">
+       Un Variational Autoencoder (VAE) est un <strong>modèle génératif</strong>, c'est-à-dire qu'il permet de créer des images, du texte, de la musique, etc.
+       Nous nous concentrerons uniquement sur la génération d'images, bien que les VAEs aient d'autres applications.
+       Voici une frise chronologique des modèles que nous explorerons, ainsi que des principaux modèles génératifs de la période 2014-2020.
+    </div>
+    <br>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    st.image(
+        image="docs/frise.png",
+        caption="Frise chronologique des modèles génératifs, 2014-2020",
+        use_container_width=True,
+    )
+
+    st.markdown(
+        """
+    <style>
+    .justified {
+        text-align: justify;
+    }
+    </style>
+    <div class="justified">
+        Les VAEs sont dérivés des auto-encodeurs, qui compressent des images pour les représenter dans un espace de plus basse dimension : c'est le rôle de l'encodeur.
+        Ensuite, cette représentation latente est décompressée pour reconstituer l'image originale : c'est le rôle du décodeur.
+        Les auto-encodeurs sont utilisés quotidiennement pour envoyer des images et du son, avec pour objectif de récupérer exactement ce qui a été envoyé.
+        <br><br>
+        C'est ici que les VAEs se distinguent. Contrairement aux auto-encodeurs classiques, les VAEs ne sont pas déterministes.
+        Ils permettent, à partir d'une même représentation latente, de générer des images variées.
+        L'encodeur ne fournit plus une représentation latente fixe, mais une distribution probabiliste de cette représentation.
+    </div>
+    <br>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    # Section "Learn more about VAE"
+    with st.expander("ℹ️ En savoir plus sur le VAE et ses variantes"):
+
         st.write(
             """
-        ### Qu'est-ce qu'un Variational Autoencoder (VAE)?
-
-        Un Variational Autoencoder est un type de réseau de neurones génératif qui apprend à représenter des données
-        dans un espace latent continu. Contrairement aux autoencoders classiques, les VAEs imposent une structure sur
-        l'espace latent en utilisant une approche probabiliste.
-
         ### Architecture
 
-        Un VAE se compose de deux parties principales:
+        Un VAE se compose de deux parties principales :
 
-        1. **Encodeur**: Transforme les données d'entrée en distributions dans l'espace latent (moyenne μ et variance σ²)
-        2. **Décodeur**: Reconstruit les données à partir d'échantillons de l'espace latent
-
-        ### Fonction de perte
-
-        La fonction de perte d'un VAE comprend deux termes:
-
-        - **Erreur de reconstruction**: Mesure la différence entre les données d'entrée et leur reconstruction
-        - **Divergence KL**: Force la distribution latente à se rapprocher d'une distribution normale standard
-
-        La fonction de perte totale est: L = Reconstruction_Loss + β * KL_Divergence
-
-        ### Génération de nouvelles données
-
-        Après l'entrainement, on peut générer de nouvelles données en:
-        1. Échantillonnant des points de l'espace latent suivant N(0, I)
-        2. Décodant ces points en utilisant le décodeur
-
-        ### Applications
-
-        Les VAEs sont utilisés pour:
-        - La génération d'images
-        - La compression de données
-        - L'apprentissage de représentations
-        - L'interpolation entre différentes données
+        1. **Encodeur**: Transforme les données d'entrée en distributions dans l'espace latent caractérisées par une moyenne μ et une variance σ².
+        2. **Décodeur**: Reconstruit les données à partir d'échantillons de l'espace latent.
         """
         )
 
-    # Bouton pour lancer l'entrainement
+        st.image(
+            image="docs/VAE_illustration.png",
+            caption="Schéma des VAEs",
+            use_container_width=True,
+        )
+
+        st.write(
+            """
+
+        ### Fonction de perte
+
+        La fonction de perte d'un VAE comprend deux termes :
+
+        - **Erreur de reconstruction**: Mesure la différence entre les données d'entrée et leur reconstruction, souvent une erreur quadratique (MSE).
+        - **Divergence Kullback-Leibler**: Force la distribution latente a posteriori à se rapprocher de la distribution a priori, souvent une distribution normale.
+
+        La fonction de perte totale est : L = Reconstruction_Loss + KL_Divergence
+
+        ### La reparamétrisation
+
+        Étant donné que le VAE n'est pas déterministe, il y a une part d'aléatoire dans la construction de l'espace latent z.
+        Cela pose problème lors de la rétropropagation. Pour contourner ce problème, on utilise une technique de reparamétrisation de z.
+        En pratique, comme on utilise une distribution gaussienne, la reparamétrisation est donnée par : z = μ + σ ⋅ ε, où ε suit une loi normale standard.
+
+        """
+        )
+
+        st.image(
+            image="docs/reparam.png",
+            caption="Reparametrization Trick",
+            use_container_width=True,
+        )
+
+        st.write(
+            """
+        ### Le β-VAE
+
+        Le β-VAE est une variante du VAE original qui introduit un poids β dans la fonction de perte pour ajuster l'importance relative des deux termes.
+
+        La nouvelle fonction de perte est : L(β) = Reconstruction_Loss + β ⋅ KL_Divergence
+
+        Dans l'article de Higgins et al., ββ est souvent inférieur à 1,
+        ce qui donne plus de poids à la reconstruction au détriment de la proximité des distributions a priori et a posteriori.
+        Il est crucial d'optimiser ββ pour répondre aux attentes et objectifs spécifiques du β-VAE.
+
+        ### Le σ-VAE
+
+        Le σ-VAE est une variante du β-VAE qui calcule analytiquement la variance des données σσ et l'utilise dans la perte de reconstruction, qui est cette fois-ci une log-vraisemblance.
+        Cela permet au modèle d'être plus robuste face aux données aberrantes et de produire des reconstructions plus fidèles des images d'entrée.
+        """
+        )
+
+        st.image(
+            image="docs/vae_results.png",
+            caption="Génération d'images par des VAEs",
+            use_container_width=True,
+        )
+
+    # Button to start training
     if st.button("Entrainer le modèle"):
         with st.spinner("Entrainement/chargement du modèle en cours..."):
             trained_model = modelisation(
@@ -337,7 +430,7 @@ with col1:
                 epochs=epochs,
             )
 
-# Colonne 2: Schéma du VAE (toujours visible)
+# Column 2: VAE diagram (always visible)
 with col2:
     st.markdown(4 * "<br>", unsafe_allow_html=True)
     st.subheader("Architecture")
@@ -351,13 +444,14 @@ with col2:
     )
     st.graphviz_chart(vae_diagram)
 
-    # Section Références
+    # References section
     st.markdown("---")
     st.subheader("Références")
     st.markdown(
         """
     - [Auto-Encoding Variational Bayes](https://arxiv.org/abs/1312.6114) - Diederik P. Kingma, Max Welling (2013)
-    - [Tutorial on Variational Autoencoders](https://arxiv.org/abs/1606.05908) - Carl Doersch (2016)
+    - [β-VAE: LEARNING BASIC VISUAL CONCEPTS WITH A CONSTRAINED VARIATIONAL FRAMEWORK](https://openreview.net/forum?id=Sy2fzU9gl) - Irina Higgins et al. (2017)
+    - [Simple and Effective VAE Training with Calibrated Decoders](https://orybkin.github.io/sigma-vae/) - Oleh Rybkin et al. (2020)
     """
     )
 
