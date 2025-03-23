@@ -359,7 +359,7 @@ with col1:
         )
 
         st.image(
-            image="img/VAE_illustration.png",
+            image="img/vae_illustration.png",
             caption="Schéma des VAEs",
             use_container_width=True,
         )
