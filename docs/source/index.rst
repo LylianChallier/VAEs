@@ -11,9 +11,12 @@ Welcome to methodes-ia's documentation!
    :caption: Contents:
 
    app
-   dl
    utils
    viz
+   bvae
+   svae
+   train
+   
 
 .. Indices and tables
 .. ==================
