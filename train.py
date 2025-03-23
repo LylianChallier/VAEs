@@ -1,6 +1,7 @@
-"""The training function.
+"""
+Training module for VAE models.
 
-Contains training loop with evaluation on each epoch
+Contains the training loop with evaluation performed at each epoch.
 """
 
 import torch
@@ -11,16 +12,15 @@ import matplotlib.pyplot as plt
 from typing import Tuple, Dict, List
 import time
 
-# Import des modules personnalisés
-from viz import plot_loss_interactive, visualize_reconstructions
+# Import custom visualization modules
+from viz import plot_loss, visualize_reconstructions
 
 
 def train_model(
     model: nn.Module,
     train_loader: DataLoader,
     test_loader: DataLoader,
-    num_epochs: int = 10,
-    learning_rate: float = 1e-3,
+    num_epochs: int,
     device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu"),
     progress_bar=None,
     status_text=None,
@@ -33,36 +33,36 @@ def train_model(
     Parameters
     ----------
     model : nn.Module
-        The VAE model to train
+        The VAE model to train.
     train_loader : DataLoader
-        DataLoader for the training set
+        DataLoader for the training set.
     test_loader : DataLoader
-        DataLoader for the test set
+        DataLoader for the test set.
     num_epochs : int
-        Number of epochs to train for
-    learning_rate : float
-        Learning rate for the optimizer
-    device : torch.device
-        Device to run the training on
+        Number of epochs to train for.
+    device : torch.device, optional
+        Device to run the training on, by default CUDA if available, else CPU.
     progress_bar : st.empty, optional
-        Streamlit progress bar
+        Streamlit progress bar.
     status_text : st.empty, optional
-        Streamlit text element to show status
+        Streamlit text element to show status.
     loss_placeholder : st.empty, optional
-        Streamlit placeholder for loss plot
+        Streamlit placeholder for loss plot.
     images_placeholder : st.empty, optional
-        Streamlit placeholder for image reconstructions
+        Streamlit placeholder for image reconstructions.
 
     Returns
     -------
-    tuple
-        A tuple containing the trained model and dictionary of training/test losses
+    Tuple[nn.Module, Dict[str, List[float]]]
+        A tuple containing:
+        - trained model
+        - dictionary of training and test losses
     """
     # Move the model to the device
     model = model.to(device)
 
     # Initialize the optimizer
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     # Initialize lists to store losses
     train_losses = []
@@ -83,7 +83,7 @@ def train_model(
         if progress_bar is not None:
             progress_bar.progress((epoch) / num_epochs)
 
-        # Training
+        # Training phase
         model.train()
         train_loss = 0
 
@@ -113,14 +113,14 @@ def train_model(
             # Update status with batch progress (optional)
             if status_text is not None and batch_idx % 10 == 0:
                 status_text.text(
-                    f"Epoch {epoch+1}/{num_epochs} - Batch {batch_idx}/{len(train_loader)}"
+                    f"Epoch {epoch + 1}/{num_epochs} - Batch {batch_idx}/{len(train_loader)}"
                 )
 
         # Average training loss
         avg_train_loss = train_loss / len(train_loader.dataset)
         train_losses.append(avg_train_loss)
 
-        # Evaluation
+        # Evaluation phase
         model.eval()
         test_loss = 0
 
@@ -144,12 +144,12 @@ def train_model(
 
         # Print the loss for each epoch
         print(
-            f"Epoch: {epoch+1}/{num_epochs}, Train Loss: {avg_train_loss:.4f}, Test Loss: {avg_test_loss:.4f}"
+            f"Epoch: {epoch + 1}/{num_epochs}, Train Loss: {avg_train_loss:.4f}, Test Loss: {avg_test_loss:.4f}"
         )
 
         # Update loss curves plot if placeholder is available
         if loss_placeholder is not None:
-            plot_loss_interactive(train_losses, test_losses, loss_placeholder, loss_fig)
+            plot_loss(train_losses, test_losses, loss_placeholder, loss_fig)
 
         # Update reconstructions plot if placeholder is available
         if images_placeholder is not None and (
@@ -166,7 +166,7 @@ def train_model(
     if progress_bar is not None:
         progress_bar.progress(1.0)
     if status_text is not None:
-        status_text.text(f"Entaînement terminé après {num_epochs} epochs!")
+        status_text.text(f"Training completed after {num_epochs} epochs!")
 
     # Return the trained model and the losses
     return model, {"train_losses": train_losses, "test_losses": test_losses}

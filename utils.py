@@ -1,40 +1,39 @@
-"""The functions to handle with data.
+"""
+Data handling utilities.
 
-Contains functions to:
-- generate an id to save model to .pth file
-- load the data, normalize it and make dataloader
+This module contains functions to:
+- Generate a unique ID for saving model files
+- Load, normalize and prepare dataloaders for common datasets
 """
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-from torch.utils.data import DataLoader, random_split
-import torchvision
-import numpy as np
-import matplotlib.pyplot as plt
+from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
-from typing import Tuple, Dict, List, Optional, Union, Callable
-import streamlit as st
-import io
-from PIL import Image
-import time
-import pandas as pd
+from typing import Tuple, Dict
 import json
 import hashlib
 
 
-# Fonction pour créer un identifiant unique de modèle basé sur ses paramètres
-def generate_model_id(params):
+def generate_model_id(params: Dict) -> str:
+    """
+    Create a unique model identifier based on its parameters.
+
+    Parameters
+    ----------
+    params : Dict
+        Dictionary containing model parameters.
+
+    Returns
+    -------
+    str
+        MD5 hash of the sorted parameters, to be used as model ID.
+    """
     param_str = json.dumps(params, sort_keys=True)
     return hashlib.md5(param_str.encode()).hexdigest()
 
 
 def get_dataset(
     dataset_name: str,
-    batch_size: int = 128,
-    test_split: float = 0.2,
-    device: torch.device = None,
+    batch_size: int,
 ) -> Tuple[DataLoader, DataLoader, Tuple[int, int, int]]:
     """
     Load and prepare the dataset for training.
@@ -42,23 +41,27 @@ def get_dataset(
     Parameters
     ----------
     dataset_name : str
-        Name of the dataset ('mnist', 'cifar10', or 'freyfaces')
+        Name of the dataset ('mnist' or 'cifar10').
     batch_size : int
-        Batch size for the data loaders
-    test_split : float
-        Proportion of the dataset to use for testing
-    device : torch.device, optional
-        Device to put the data on (not used directly in this function but passed to the data loaders)
+        Batch size for the data loaders.
 
     Returns
     -------
-    tuple
-        A tuple containing the train and test DataLoaders, and input dimensions
+    Tuple[DataLoader, DataLoader, Tuple[int, int, int]]
+        A tuple containing:
+        - train_loader: DataLoader for training data
+        - test_loader: DataLoader for testing data
+        - dimensions: (channels, height, width) of input images
+
+    Raises
+    ------
+    ValueError
+        If dataset_name is neither 'mnist' nor 'cifar10'.
     """
-    # Define transformations
+    # Define transformations based on dataset
     if dataset_name.lower() == "mnist":
         transform = transforms.Compose(
-            [transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))]
+            [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
         )
         train_dataset = datasets.MNIST(
             root="./data", train=True, transform=transform, download=True
@@ -67,12 +70,13 @@ def get_dataset(
             root="./data", train=False, transform=transform, download=True
         )
         input_channels, input_height, input_width = 1, 28, 28
-
     elif dataset_name.lower() == "cifar10":
         transform = transforms.Compose(
             [
                 transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                transforms.Normalize(
+                    (0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616)
+                ),
             ]
         )
         train_dataset = datasets.CIFAR10(
@@ -82,9 +86,8 @@ def get_dataset(
             root="./data", train=False, transform=transform, download=True
         )
         input_channels, input_height, input_width = 3, 32, 32
-
     else:
-        raise ValueError("Unknow dataset, please select MNIST or Cifar10")
+        raise ValueError("Unknown dataset, please select 'mnist' or 'cifar10'")
 
     # Create data loaders
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)

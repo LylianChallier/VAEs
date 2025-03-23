@@ -1,10 +1,11 @@
-"""The visualization functions.
+"""
+Visualization functions for VAE models.
 
-Contains functions to:
-- interactive plot for the losses (train and test)
-- visualize input images vs reconstructed images
-- visualize images generated from a gaussian random sample
-- create the vae arcitecture diagram
+This module contains functions to:
+- Plot training and test losses
+- Visualize input images vs. reconstructed images
+- Generate and visualize images from Gaussian random samples
+- Create VAE architecture diagrams
 """
 
 import torch
@@ -12,71 +13,34 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Union
+from typing import Union, List, Tuple, Optional
 import graphviz
 
 
-def plot_loss_pretrained(train_losses, test_losses, placeholder=None, fig=None):
-    """
-    Plot the training and test loss for a pretrained model.
-
-    Parameters
-    ----------
-    train_losses : list
-        List of training losses
-    test_losses : list
-        List of test losses
-    placeholder : st.empty, optional
-        Streamlit placeholder to update with the plot
-    fig : matplotlib.figure.Figure, optional
-        Figure to use for plotting
-    """
-    epochs = list(range(1, len(train_losses) + 1))
-
-    # Create figure if not provided
-    if fig is None:
-        fig, ax = plt.subplots(figsize=(10, 6))
-    else:
-        fig.clf()
-        ax = fig.add_subplot(111)
-
-    # Plot losses with both lines and points
-
-    ax.plot(epochs, train_losses, "b-", label="Training Loss")
-    ax.scatter(epochs, train_losses, color="blue")
-    ax.plot(epochs, test_losses, "r-", label="Testing Loss")
-    ax.scatter(epochs, test_losses, color="red")
-
-    # Add labels and title
-    ax.set_xlabel("Epoch")
-    ax.set_ylabel("Loss")
-    ax.set_title("Training and Testing Loss vs. Epochs")
-
-    # Add grid and legend
-    ax.grid(True, linestyle="--", alpha=0.7)
-    ax.legend()
-
-    if placeholder is not None:
-        # Update the placeholder
-        placeholder.pyplot(fig)
-
-    return fig
-
-
-def plot_loss_interactive(train_losses, test_losses, placeholder=None, fig=None):
+def plot_loss(
+    train_losses: List[float],
+    test_losses: List[float],
+    placeholder=None,
+    fig=None,
+):
     """
     Plot the training and test loss during the training.
 
     Parameters
     ----------
-    train_losses : list
-        List of training losses
-    test_losses : list
-        List of test losses
+    train_losses : List[float]
+        List of training losses.
+    test_losses : List[float]
+        List of test losses.
     placeholder : st.empty, optional
-        Streamlit placeholder to update with the plot
+        Streamlit placeholder to update with the plot.
     fig : matplotlib.figure.Figure, optional
-        Figure to use for plotting
+        Figure to use for plotting.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The figure with loss plots.
     """
     epochs = list(range(1, len(train_losses) + 1))
 
@@ -113,9 +77,9 @@ def visualize_reconstructions(
     model: nn.Module,
     images: Union[torch.Tensor, DataLoader],
     placeholder=None,
-    epoch=None,
+    epoch: Optional[int] = None,
     fig=None,
-    num_images=4,
+    num_images: int = 4,
 ):
     """
     Visualize original images and their reconstructions.
@@ -123,22 +87,22 @@ def visualize_reconstructions(
     Parameters
     ----------
     model : nn.Module
-        The trained VAE model
-    images : torch.Tensor or DataLoader
-        Batch of images to reconstruct or a DataLoader to get images from
+        The trained VAE model.
+    images : Union[torch.Tensor, DataLoader]
+        Batch of images to reconstruct or a DataLoader to get images from.
     placeholder : st.empty, optional
-        Streamlit placeholder to update with the plot
+        Streamlit placeholder to update with the plot.
     epoch : int, optional
-        Current epoch number (for title)
+        Current epoch number (for title).
     fig : matplotlib.figure.Figure, optional
-        Figure to use for plotting
+        Figure to use for plotting.
     num_images : int, optional
-        Number of images to visualize
+        Number of images to visualize, by default 4.
 
     Returns
     -------
     matplotlib.figure.Figure
-        The figure with reconstructions
+        The figure with reconstructions.
     """
     # Make sure the model is in evaluation mode
     model.eval()
@@ -173,7 +137,7 @@ def visualize_reconstructions(
             img = np.transpose(images_np[i], (1, 2, 0))
             img = (img + 1) / 2  # Denormalize from [-1, 1] to [0, 1]
             ax.imshow(img)
-        ax.set_title(f"Original {i+1}")
+        ax.set_title(f"Original {i + 1}")
         ax.axis("off")
 
     # Plot reconstructions
@@ -186,12 +150,12 @@ def visualize_reconstructions(
             img = np.transpose(reconstructions_np[i], (1, 2, 0))
             img = (img + 1) / 2  # Denormalize from [-1, 1] to [0, 1]
             ax.imshow(img)
-        ax.set_title(f"Reconstructed {i+1}")
+        ax.set_title(f"Reconstructed {i + 1}")
         ax.axis("off")
 
     # Add a title to the figure
     if epoch is not None:
-        plt.suptitle(f"Epoch {epoch+1} Reconstructions")
+        plt.suptitle(f"Epoch {epoch + 1} Reconstructions")
     else:
         plt.suptitle("VAE Reconstructions")
 
@@ -205,7 +169,10 @@ def visualize_reconstructions(
 
 
 def generate_samples(
-    model: nn.Module, num_samples: int = 16, device: torch.device = None, fig=None
+    model: nn.Module,
+    num_samples: int,
+    device: Optional[torch.device] = None,
+    fig=None,
 ):
     """
     Generate and visualize samples from the latent space.
@@ -213,18 +180,18 @@ def generate_samples(
     Parameters
     ----------
     model : nn.Module
-        The trained VAE model
+        The trained VAE model.
     num_samples : int
-        Number of samples to generate
+        Number of samples to generate.
     device : torch.device, optional
         Device to run the generation on. If None, uses the device of the model.
     fig : matplotlib.figure.Figure, optional
-        Figure to use for plotting
+        Figure to use for plotting.
 
     Returns
     -------
     matplotlib.figure.Figure
-        Figure with generated samples
+        Figure with generated samples.
     """
     # Make sure the model is in evaluation mode
     model.eval()
@@ -267,33 +234,36 @@ def generate_samples(
     return fig
 
 
-def create_vae_diagram(input_dim, latent_dim, hidden_dims):
+def create_vae_diagram(
+    input_dim: Tuple[int, int, int],
+    latent_dim: int,
+    hidden_dims: List[int],
+):
     """
     Create a visualization diagram of the VAE architecture.
     Handles the case with a single hidden dimension correctly.
 
     Parameters
     ----------
-    input_dim : tuple
-        Input dimensions (channels, height, width)
+    input_dim : Tuple[int, int, int]
+        Input dimensions (channels, height, width).
     latent_dim : int
-        Dimension of the latent space
+        Dimension of the latent space.
     hidden_dims : List[int]
-        List of hidden dimensions
+        List of hidden dimensions.
 
     Returns
     -------
     graphviz.Digraph
-        A graphviz diagram of the VAE architecture
+        A graphviz diagram of the VAE architecture.
     """
-
     graph = graphviz.Digraph(format="png")
     graph.attr(rankdir="TB")  # Top to bottom layout
     graph.attr("node", shape="egg", style="filled", color="lightblue")
 
     # Input node
     input_channels, input_height, input_width = input_dim
-    graph.node("Input", f"Image Entrée\n{input_channels}×{input_height}×{input_width}")
+    graph.node("Input", f"Input Image\n{input_channels}×{input_height}×{input_width}")
 
     # Track dimensions through the network
     current_channels = input_channels
@@ -309,11 +279,11 @@ def create_vae_diagram(input_dim, latent_dim, hidden_dims):
 
         graph.node(
             f"Enc{i}",
-            f"Convolution 2D\n{current_channels} → {h_dim}\n{current_height}×{current_width} → {next_height}×{next_width}",
+            f"2D Convolution\n{current_channels} → {h_dim}\n{current_height}×{current_width} → {next_height}×{next_width}",
         )
 
         if i > 0:
-            graph.edge(f"Enc{i-1}", f"Enc{i}")
+            graph.edge(f"Enc{i - 1}", f"Enc{i}")
         else:
             graph.edge("Input", f"Enc{i}")
 
@@ -327,7 +297,7 @@ def create_vae_diagram(input_dim, latent_dim, hidden_dims):
         "Flatten",
         f"Flatten\n{current_channels}×{current_height}×{current_width} → {flat_size}",
     )
-    graph.edge(f"Enc{len(hidden_dims)-1}", "Flatten")
+    graph.edge(f"Enc{len(hidden_dims) - 1}", "Flatten")
 
     # Latent space
     graph.node("FC_mu", f"FC μ\n{flat_size} → {latent_dim}")
@@ -336,18 +306,17 @@ def create_vae_diagram(input_dim, latent_dim, hidden_dims):
     graph.edge("Flatten", "FC_var")
 
     # Reparameterization
-    graph.node("Z", f"Espace Latent\n{latent_dim}\nz = μ + σ·ε")
-    graph.edge("FC_mu", "Z", label="reparametrisation avec μ et σ")
-    # graph.edge("FC_mu", "Z", label="μ")
+    graph.node("Z", f"Latent Space\n{latent_dim}\nz = μ + σ·ε")
+    graph.edge("FC_mu", "Z", label="reparameterization with μ and σ")
     graph.edge("FC_var", "Z")
 
     # Decoder - FC and reshape
-    graph.node("Dec_FC", f"FC Sortie Latente\n{latent_dim} → {flat_size}")
+    graph.node("Dec_FC", f"FC Latent Output\n{latent_dim} → {flat_size}")
     graph.edge("Z", "Dec_FC")
 
     graph.node(
         "Reshape",
-        f"Redimensionne\n{flat_size} → {current_channels}×{current_height}×{current_width}",
+        f"Reshape\n{flat_size} → {current_channels}×{current_height}×{current_width}",
     )
     graph.edge("Dec_FC", "Reshape")
 
@@ -363,7 +332,7 @@ def create_vae_diagram(input_dim, latent_dim, hidden_dims):
 
         graph.node(
             "Dec0",
-            f"Convolution Transposée\n{current_channels} → {current_channels}\n{current_height}×{current_width} → {next_height}×{next_width}",
+            f"Transposed Convolution\n{current_channels} → {current_channels}\n{current_height}×{current_width} → {next_height}×{next_width}",
         )
         graph.edge("Reshape", "Dec0")
 
@@ -373,13 +342,13 @@ def create_vae_diagram(input_dim, latent_dim, hidden_dims):
         # Final convolution to match input channels
         graph.node(
             "Dec_final",
-            f"Convolution 2D\n{current_channels} → {input_channels}\n{current_height}×{current_width} → {current_height}×{current_width}",
+            f"2D Convolution\n{current_channels} → {input_channels}\n{current_height}×{current_width} → {current_height}×{current_width}",
         )
         graph.edge("Dec0", "Dec_final")
 
         # Output
         graph.node(
-            "Output", f"Image Sortie\n{input_channels}×{input_height}×{input_width}"
+            "Output", f"Output Image\n{input_channels}×{input_height}×{input_width}"
         )
         graph.edge("Dec_final", "Output")
     else:
@@ -395,13 +364,13 @@ def create_vae_diagram(input_dim, latent_dim, hidden_dims):
             node_name = f"Dec{i}"
             graph.node(
                 node_name,
-                f"Conv 2D Transposée\n{in_channels} → {out_channels}\n{current_height}×{current_width} → {next_height}×{next_width}",
+                f"Transposed 2D Conv\n{in_channels} → {out_channels}\n{current_height}×{current_width} → {next_height}×{next_width}",
             )
 
             if i == 0:
                 graph.edge("Reshape", node_name)
             else:
-                graph.edge(f"Dec{i-1}", node_name)
+                graph.edge(f"Dec{i - 1}", node_name)
 
             current_channels = out_channels
             current_height = next_height
@@ -413,9 +382,9 @@ def create_vae_diagram(input_dim, latent_dim, hidden_dims):
 
         graph.node(
             "Dec_final1",
-            f"Conv 2D Transposée\n{current_channels} → {current_channels}\n{current_height}×{current_width} → {next_height}×{next_width}",
+            f"Transposed 2D Conv\n{current_channels} → {current_channels}\n{current_height}×{current_width} → {next_height}×{next_width}",
         )
-        graph.edge(f"Dec{len(hidden_dims_reversed)-2}", "Dec_final1")
+        graph.edge(f"Dec{len(hidden_dims_reversed) - 2}", "Dec_final1")
 
         current_height = next_height
         current_width = next_width
@@ -423,13 +392,13 @@ def create_vae_diagram(input_dim, latent_dim, hidden_dims):
         # Final convolutional layer
         graph.node(
             "Dec_final2",
-            f"Convolution 2D\n{current_channels} → {input_channels}\n{current_height}×{current_width} → {current_height}×{current_width}",
+            f"2D Convolution\n{current_channels} → {input_channels}\n{current_height}×{current_width} → {current_height}×{current_width}",
         )
         graph.edge("Dec_final1", "Dec_final2")
 
         # Output
         graph.node(
-            "Output", f"Image Sortie\n{input_channels}×{input_height}×{input_width}"
+            "Output", f"Output Image\n{input_channels}×{input_height}×{input_width}"
         )
         graph.edge("Dec_final2", "Output")
 

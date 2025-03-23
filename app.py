@@ -1,8 +1,7 @@
-"""The main module of the app.
+"""Main module of the Variational Autoencoder Explorer app.
 
-Contains the corpus of the app and the main function `modelisation`.
-This function create train the model,
-also plot the losses and show the reconstructed images.
+Contains the core components of the application and the main function `modelisation`
+that trains the model, plots losses and displays reconstructed images.
 """
 
 import streamlit as st
@@ -11,7 +10,6 @@ import torch
 import os
 
 # Import modules
-from vae import VAE
 from bvae import BetaVAE
 from svae import SigmaVAE
 from train import train_model
@@ -19,8 +17,8 @@ from utils import get_dataset, generate_model_id
 from viz import (
     visualize_reconstructions,
     generate_samples,
-    plot_loss_interactive,
     create_vae_diagram,
+    plot_loss,
 )
 
 # Configuration de la page
@@ -28,7 +26,7 @@ st.set_page_config(
     page_title="Variational Autoencoder Explorer", page_icon="🖼", layout="wide"
 )
 
-# Assurez-vous que le dossier 'models' existe
+# Ensure models directory exists
 if not os.path.exists("models"):
     os.makedirs("models")
 
@@ -36,7 +34,6 @@ if not os.path.exists("models"):
 col1, col2 = st.columns([3, 1])
 
 
-# Fonction pour créer et entrainer le modèle ou charger un modèle existant
 def modelisation(
     model_name,
     dataset,
@@ -47,10 +44,36 @@ def modelisation(
     batch_size,
     epochs,
 ):
-    # Création du dataloader
+    """Create, train or load a VAE model with the specified parameters.
+
+    Parameters
+    ----------
+    model_name : str
+        Type of VAE model to use ("VAE classique", "β-VAE" or "σ-VAE")
+    dataset : str
+        Dataset to use for training and testing
+    latent_dim : int
+        Dimension of the latent space
+    hidden_layers : list
+        List of integers specifying the number of filters in each convolutional layer
+    reconstruction_error : str
+        Type of reconstruction error to use ("MSE", "L1", "gaussian", or "laplace")
+    beta : float
+        Coefficient for the KL divergence term
+    batch_size : int
+        Batch size for training
+    epochs : int
+        Number of training epochs
+
+    Returns
+    -------
+    torch.nn.Module
+        Trained or loaded VAE model
+    """
+    # Create dataloaders
     train_loader, test_loader, dim = get_dataset(dataset, batch_size)
 
-    # Paramètres du modèle pour identifier les modèles déjà entraînés
+    # Model parameters to identify previously trained models
     model_params = {
         "model_name": model_name,
         "dataset": dataset,
@@ -64,16 +87,17 @@ def modelisation(
     model_path = f"models/vae_{model_id}.pth"
     losses_path = f"models/vae_{model_id}_losses.pth"
 
-    # Création du modèle VAE
+    # Create VAE model
     c, w, h = dim
     if model_name == "VAE classique":
-        model = VAE(
+        model = BetaVAE(
             c,
             w,
             h,
             latent_dim=latent_dim,
             hidden_dims=hidden_layers,
             recon_loss_type=reconstruction_error,
+            beta=1,
         )
     elif model_name == "β-VAE":
         model = BetaVAE(
@@ -96,20 +120,18 @@ def modelisation(
             beta=beta,
         )
 
-    # Vérifier si le modèle existe déjà
+    # Check if model already exists
     if os.path.exists(model_path) and os.path.exists(losses_path):
         st.info("Chargement d'un modèle existant avec les mêmes paramètres...")
 
-        # Charger le modèle et les historiques de perte
+        # Load model and loss history
         model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
         losses = torch.load(losses_path, map_location=torch.device("cpu"))
 
-        # Afficher le récapitulatif des pertes
+        # Display loss summary
         st.subheader("Fonction de perte et reconstruction")
         loss_fig = plt.figure(figsize=(10, 6))
-        plot_loss_interactive(
-            losses["train_losses"], losses["test_losses"], fig=loss_fig
-        )
+        plot_loss(losses["train_losses"], losses["test_losses"], fig=loss_fig)
         st.pyplot(loss_fig)
         plt.close(loss_fig)
 
@@ -118,26 +140,26 @@ def modelisation(
         st.pyplot(recon_fig)
         plt.close(recon_fig)
 
-        # Afficher message de confirmation
+        # Display confirmation message
         st.success(f"Modèle chargé avec succès! (Nombre d'epochs: {epochs})")
 
-        # Afficher les images générées
+        # Display generated images
         st.subheader("Images générées")
         fig_gen = plt.figure(figsize=(10, 10))
         generate_samples(model, num_samples=16, fig=fig_gen)
         st.pyplot(fig_gen)
         plt.close(fig_gen)
     else:
-        # Préparation des éléments d'affichage pour l'entraînement
+        # Prepare display elements for training
         st.subheader("Entraînement du modèle")
         progress_bar = st.progress(0)
         status_text = st.empty()
 
-        # Placeholder pour les pertes et reconstructions pendant l'entraînement
+        # Placeholders for losses and reconstructions during training
         loss_placeholder = st.empty()
         images_placeholder = st.empty()
 
-        # Entrainement du modèle
+        # Train the model
         trained_model, losses = train_model(
             model=model,
             train_loader=train_loader,
@@ -149,16 +171,16 @@ def modelisation(
             images_placeholder=images_placeholder,
         )
 
-        # Sauvegarder le modèle entraîné et les historiques de pertes
+        # Save trained model and loss history
         torch.save(model.state_dict(), model_path)
         torch.save(losses, losses_path)
 
-        # Afficher un message de fin d'entrainement
+        # Display end of training message
         st.success(
             f"Entrainement terminé après {epochs} epochs! Modèle sauvegardé dans {model_path}"
         )
 
-        # Afficher les images générées une fois l'entraînement terminé
+        # Display generated images after training
         st.subheader("Images générées")
         fig_gen = plt.figure(figsize=(10, 10))
         generate_samples(model, num_samples=16, fig=fig_gen)
@@ -189,18 +211,18 @@ hidden_layers = st.sidebar.multiselect(
     default=[32, 64],
 )
 
-# Vérifier si le nombre de sélections dépasse le maximum autorisé
+# Check if the number of selections exceeds the maximum allowed
 if len(hidden_layers) > 5:
     st.sidebar.error(
         "Vous ne pouvez sélectionner qu'un maximum de 5 couches de convolution."
     )
-    # Réinitialiser la sélection si nécessaire
+    # Reset selection if necessary
     hidden_layers = hidden_layers[:5]
 
-# Vérifier si le nombre de sélections est d'au moins 1
+# Check if the number of selections is at least 1
 if len(hidden_layers) == 0:
     st.sidebar.error("Vous devez choisir au moins une couche de convolution.")
-    # Réinitialiser la sélection si nécessaire
+    # Reset selection if necessary
     hidden_layers = [32]
 
 # Type d'erreur de reconstruction
@@ -320,10 +342,10 @@ with col2:
     st.markdown(4 * "<br>", unsafe_allow_html=True)
     st.subheader("Architecture")
 
-    # Déterminer le nombre de canaux basé sur le dataset sélectionné
+    # Determine number of channels based on selected dataset
     dim = (1, 28, 28) if dataset.lower() == "mnist" else (3, 32, 32)
 
-    # Créer et afficher le schéma du VAE qui est interactif avec les paramètres
+    # Create and display the interactive VAE diagram
     vae_diagram = create_vae_diagram(
         input_dim=dim, latent_dim=latent_dim, hidden_dims=hidden_layers
     )
