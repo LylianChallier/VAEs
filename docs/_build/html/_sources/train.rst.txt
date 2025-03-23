@@ -1,7 +1,7 @@
-viz module
-==========
+train module
+============
 
-.. automodule:: viz
+.. automodule:: train
    :members:
    :show-inheritance:
    :undoc-members:
