@@ -318,7 +318,7 @@ with col1:
     )
 
     st.image(
-        image="docs/frise.png",
+        image="img/frise.png",
         caption="Frise chronologique des modèles génératifs, 2014-2020",
         use_container_width=True,
     )
@@ -359,7 +359,7 @@ with col1:
         )
 
         st.image(
-            image="docs/VAE_illustration.png",
+            image="img/VAE_illustration.png",
             caption="Schéma des VAEs",
             use_container_width=True,
         )
@@ -386,7 +386,7 @@ with col1:
         )
 
         st.image(
-            image="docs/reparam.png",
+            image="img/reparam.png",
             caption="Reparametrization Trick",
             use_container_width=True,
         )
@@ -411,7 +411,7 @@ with col1:
         )
 
         st.image(
-            image="docs/vae_results.png",
+            image="img/vae_results.png",
             caption="Génération d'images par des VAEs",
             use_container_width=True,
         )

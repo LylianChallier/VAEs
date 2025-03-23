@@ -1,7 +1,7 @@
-viz module
-==========
+svae module
+===========
 
-.. automodule:: viz
+.. automodule:: svae
    :members:
    :show-inheritance:
    :undoc-members:
