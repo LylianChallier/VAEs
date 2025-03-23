@@ -17,13 +17,13 @@ sandbox.py
 **/*.ipynb
 *.pyc
 
-# Large files
+# Large files except in img folder
 *.png
+!img/*.png
 
 # Data files
 data
-saved_models
-images
+
 # *.csv
 *.parquet
 yolov3*

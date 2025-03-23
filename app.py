@@ -399,13 +399,13 @@ with col1:
 
         La nouvelle fonction de perte est : L(β) = Reconstruction_Loss + β ⋅ KL_Divergence
 
-        Dans l'article de Higgins et al., ββ est souvent inférieur à 1,
+        Dans l'article de Higgins et al., β est souvent inférieur à 1,
         ce qui donne plus de poids à la reconstruction au détriment de la proximité des distributions a priori et a posteriori.
-        Il est crucial d'optimiser ββ pour répondre aux attentes et objectifs spécifiques du β-VAE.
+        Il est crucial d'optimiser β pour répondre aux attentes et objectifs spécifiques du β-VAE.
 
         ### Le σ-VAE
 
-        Le σ-VAE est une variante du β-VAE qui calcule analytiquement la variance des données σσ et l'utilise dans la perte de reconstruction, qui est cette fois-ci une log-vraisemblance.
+        Le σ-VAE est une variante du β-VAE qui calcule analytiquement la variance des données σ et l'utilise dans la perte de reconstruction, qui est cette fois-ci une log-vraisemblance.
         Cela permet au modèle d'être plus robuste face aux données aberrantes et de produire des reconstructions plus fidèles des images d'entrée.
         """
         )
