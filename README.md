@@ -1,4 +1,4 @@
-# Variational AutoEncoders Implementation and Streamlit App
+# Streamlit App on Variational AutoEncoders
 
 Ce projet implémente différentes variantes d'Autoencodeurs Variationnels (VAEs) avec une interface utilisateur Streamlit permettant de découvrir les VAEs en modifiant facilement les hyperparamètres.
 
