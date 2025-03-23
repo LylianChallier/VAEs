@@ -1,4 +1,4 @@
-# Variational AutoEncoders Implementation and Streamlit Visualisation
+# Variational AutoEncoders Implementation and Streamlit App
 
 Ce projet implémente différentes variantes d'Autoencodeurs Variationnels (VAEs) avec une interface utilisateur Streamlit permettant de découvrir les VAEs en modifiant facilement les hyperparamètres.
 
@@ -155,6 +155,6 @@ Les contributions sont les bienvenues! Pour contribuer:
 
 ## 📚 Références
 
-- ["Auto-Encoding Variational Bayes"](https://arxiv.org/abs/1312.6114)
-- ["beta-VAE: Learning Basic Visual Concepts with a Constrained Variational Framework"](https://openreview.net/forum?id=Sy2fzU9gl)
-- ["Simple and Effective VAE Training with Calibrated Decoders"](https://orybkin.github.io/sigma-vae/)
+- [Auto-Encoding Variational Bayes](https://arxiv.org/abs/1312.6114)
+- [beta-VAE: Learning Basic Visual Concepts with a Constrained Variational Framework](https://openreview.net/forum?id=Sy2fzU9gl)
+- [Simple and Effective VAE Training with Calibrated Decoders](https://orybkin.github.io/sigma-vae/)
