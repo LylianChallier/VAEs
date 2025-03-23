@@ -6,6 +6,7 @@ Ce projet implémente différentes variantes d'Autoencodeurs Variationnels (VAEs
 
 - [Introduction](#introduction)
 - [Modèles Implémentés](#modèles-implémentés)
+- [Résultats](#-résultats)
 - [Installation](#installation)
 - [Utilisation](#utilisation)
 - [Structure du Projet](#structure-du-projet)
@@ -36,6 +37,12 @@ C'est ici que les VAEs se distinguent. Contrairement aux auto-encodeurs classiqu
 - Implémentation selon l'article ["Simple and Effective VAE Training with Calibrated Decoders"](https://orybkin.github.io/sigma-vae/)
 
 ![Chronologie des VAEs](img/frise.png)
+
+## 💥 Résultats
+
+Pour avoir une idée des images que vous pouvez obtenir voici les résutats d'un comparatif publié par Oleh Rybkin dans ["Simple and Effective VAE Training with Calibrated Decoders"](https://arxiv.org/pdf/2006.13202).
+
+![Performances en génération des VAEs](img/vae_results.png)
 
 ## 💻 Installation (avec conda)
 
