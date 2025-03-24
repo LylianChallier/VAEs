@@ -81,6 +81,7 @@ def modelisation(
         "latent_dim": latent_dim,
         "hidden_layers": hidden_layers,
         "reconstruction_error": reconstruction_error,
+        "beta": beta,
         "epochs": epochs,
     }
 
@@ -240,7 +241,7 @@ else:
     )
 
 # Beta parameter for β-VAE and σ-VAE
-if model_name != "VAE classique":
+if model_name != "VAE original":
     beta = st.sidebar.slider(
         "Coefficient de la KL divergence β",
         min_value=0.1,
