@@ -1,5 +1,9 @@
 # Streamlit App on Variational AutoEncoders
 
+[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-Deep_Learning-red.svg)](https://pytorch.org/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-Web_App-ff4b4b.svg)](https://streamlit.io/)
+
 Ce projet implémente différentes variantes d'Autoencodeurs Variationnels (VAEs) avec une interface utilisateur Streamlit permettant de découvrir les VAEs en modifiant facilement les hyperparamètres.
 
 ![App](https://img.shields.io/badge/-Streamlit-FF4B4B?style=flat&logo=streamlit&logoColor=white) 
@@ -10,7 +14,7 @@ Lien de l'application : [Variational AutoEncoder Explorer](https://lylianchallie
 - [Introduction](#-introduction)
 - [Modèles Implémentés](#-modèles-implémentés)
 - [Résultats](#-résultats)
-- [Installation](#-installation)
+- [Installation](#-installation-avec-conda)
 - [Utilisation](#-utilisation)
 - [Structure du Projet](#-structure-du-projet)
 - [Aspects Techniques](#-aspects-techniques)
