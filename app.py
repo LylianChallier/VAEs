@@ -459,6 +459,6 @@ with col2:
     # Footer
     st.markdown("---")
     st.markdown(
-        "Développée par Lylian Challier et Mohamed-Amine Grini avec Streamlit et Pytorch."
+        "Développée par Mohamed Amine GRINI et Marine VIEILLARD avec Streamlit et Pytorch."
     )
-    st.markdown("[Repository GitHub du projet](https://github.com/LylianChallier/VAEs)")
+    st.markdown("[Repository GitHub du projet](https://github.com/MV-13/Master-2-Variational-Auto-Encoder)")

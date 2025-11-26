@@ -7,7 +7,7 @@
 Ce projet implémente différentes variantes d'Autoencodeurs Variationnels (VAEs) avec une interface utilisateur Streamlit permettant de découvrir les VAEs en modifiant facilement les hyperparamètres.
 
 ![App](https://img.shields.io/badge/-Streamlit-FF4B4B?style=flat&logo=streamlit&logoColor=white) 
-Lien de l'application : [Variational AutoEncoder Explorer](https://lylianchallier-vae.streamlit.app/) 
+Lien de l'application : [Variational AutoEncoder Explorer]() 
 
 ## 📋 Table des Matières
 
