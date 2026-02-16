@@ -1,3 +1,9 @@
+# ---------------------------------------------------------
+# Copyright (c) 2026 Lylian Challier
+# Licensed under the MIT License.
+# Original project: https://github.com/LylianChallier/VAEs
+# ---------------------------------------------------------
+
 """Main module of the Variational Autoencoder Explorer app.
 
 Contains the core components of the application and the main function `modelisation`
